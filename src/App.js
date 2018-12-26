@@ -1,15 +1,42 @@
 import React from "react";
+import { compose } from "recompose";
 
 import "./App.css";
 
+const withLoading = Component => props => (
+  <div>
+    <Component {...props} />
+
+    <div className="interactions">
+      {props.isLoading && <span>Loading...</span>}
+    </div>
+  </div>
+);
+
+const withPaginated = Component => props => (
+  <div>
+    <Component {...props} />
+
+    <div className="interactions">
+      {props.page !== null && !props.isLoading && (
+        <button type="button" onClick={props.onPaginatedSearch}>
+          More
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 const applyUpdateResult = result => prevState => ({
   hits: [...prevState.hits, ...result.hits],
-  page: result.page
+  page: result.page,
+  isLoading: false
 });
 
 const applySetResult = result => prevState => ({
   hits: result.hits,
-  page: result.page
+  page: result.page,
+  isLoading: false
 });
 
 const getHackerNewsUrl = (value, page) =>
@@ -21,7 +48,8 @@ class App extends React.Component {
 
     this.state = {
       hits: [],
-      page: null
+      page: null,
+      isLoading: false
     };
   }
 
@@ -37,10 +65,15 @@ class App extends React.Component {
     this.fetchStories(value, 0);
   };
 
-  fetchStories = (value, page) =>
+  onPaginatedSearch = e =>
+    this.fetchStories(this.input.value, this.state.page + 1);
+
+  fetchStories = (value, page) => {
+    this.setState({ isLoading: true });
     fetch(getHackerNewsUrl(value, page))
       .then(response => response.json())
       .then(result => this.onSetResult(result, page));
+  };
 
   onSetResult = (result, page) =>
     page === 0
@@ -57,7 +90,12 @@ class App extends React.Component {
           </form>
         </div>
 
-        <List list={this.state.hits} />
+        <ListWithLoadingWithPaginated
+          list={this.state.hits}
+          page={this.state.page}
+          isLoading={this.state.isLoading}
+          onPaginatedSearch={this.onPaginatedSearch}
+        />
       </div>
     );
   }
@@ -72,5 +110,10 @@ const List = ({ list }) => (
     ))}
   </div>
 );
+
+const ListWithLoadingWithPaginated = compose(
+  withPaginated,
+  withLoading
+)(List);
 
 export default App;
